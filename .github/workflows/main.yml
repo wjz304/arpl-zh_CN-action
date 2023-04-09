@@ -1,0 +1,155 @@
+#
+# Copyright (C) 2022 Ing <https://github.com/wjz304>
+# 
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '* */6 * * *'
+
+  workflow_dispatch:
+    inputs:
+      force: 
+        description: 'force'
+        default: false
+        type: boolean
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      #- uses: tgymnich/fork-sync@v1.6.3
+      #  with:
+      #    github_token: ${{ secrets.GITHUB_TOKEN }}
+      #    owner: wjz304
+      #    head: main
+      #    base: main
+      
+      - name: Sync Check
+        run: |
+          baseRepo=https://api.github.com/repos/fbelavenuto/arpl/releases
+          syncRepo=https://api.github.com/repos/wjz304/arpl-zh_CN/releases
+          baseTagName=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L ${baseRepo} | jq -r ".[0].tag_name")
+          syncTagName=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L ${syncRepo} | jq -r ".[0].tag_name")
+
+          baseRepo=https://api.github.com/repos/fbelavenuto/arpl/tags
+          syncRepo=https://api.github.com/repos/wjz304/arpl-zh_CN/tags
+          baseTagSha=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L ${baseRepo} | jq -r ".[] | select(.name == \"${baseTagName}\") | .commit.sha")
+          syncTagSha=$(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L ${syncRepo} | jq -r ".[] | select(.name == \"${syncTagName}\") | .commit.sha")
+
+          echo baseTagName:  ${baseTagName}
+          echo baseTagSha:   ${baseTagSha}
+          echo syncTagName:  ${syncTagName}
+          echo syncTagSha:   ${syncTagSha}
+
+          baseRepo=https://api.github.com/repos/fbelavenuto/arpl/commits
+          syncRepo=https://api.github.com/repos/wjz304/arpl-zh_CN/commits
+          baseShas=($(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L ${baseRepo} | jq -r ".[].sha" | tr "\n" " "))
+          syncShas=($(curl -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -L ${syncRepo} | jq -r ".[].sha" | tr "\n" " "))
+
+          echo baseShas: ${baseShas[@]}
+          echo syncShas: ${syncShas[@]}
+
+          isSync=false
+          if [ "${baseTagName}" == "${syncTagName}" ]; then
+            if [[ "${syncShas[@]}"  =~ "${baseShas[0]}" ]]; then
+              isSync=true
+            fi
+            newTag=""
+            commitSha=${baseShas[0]} 
+          else 
+            newTag="${baseTagName}"
+            commitSha=${baseTagSha}
+          fi
+          
+          echo isSync:    ${isSync}
+          echo newTag:    ${newTag}
+          echo commitSha: ${commitSha}
+
+          echo "isSync=${isSync}" >> $GITHUB_ENV
+          echo "newTag=${newTag}" >> $GITHUB_ENV
+          echo "commitSha=${commitSha}" >> $GITHUB_ENV
+
+      - name: Sync Push
+        if: env.isSync == 'false' || inputs.force == true
+        run: |
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          git clone https://${{ secrets.ACTION }}@github.com/wjz304/arpl-zh_CN.git workspace
+          cd workspace
+          # 添加远程仓库
+          git remote add upstream https://github.com/fbelavenuto/arpl.git
+          # 拉取原仓库的更新
+          git fetch upstream
+          # 重置
+          git reset --hard upstream/main 
+          
+          # 重置到版本
+          if [ "${{ env.commitSha }}" != "" ]; then
+            echo hardreset ${{ env.commitSha }}
+            git reset --hard ${{ env.commitSha }}
+          fi
+
+          # 自定义操作 修改
+          sed -i '/actions\/checkout/a\\n       # zh_CN\n      - name: zh_CN\n        run: curl -k https://raw.githubusercontent.com/wjz304/arpl-zh_CN-action/main/zh_CN.sh | sh' .github/workflows/main.yml
+
+          sed -i '/files:/i\          body: |  ' .github/workflows/main.yml
+          sed -i '/files:/i\            # ARPL 汉化版  ' .github/workflows/main.yml
+          sed -i '/files:/i\            * 自动同步仅汉化(备份原英文版为: menu_en.sh).  ' .github/workflows/main.yml
+          sed -i '/files:/i\            * 修改PAT国内加速.  ' .github/workflows/main.yml
+          sed -i '/files:/i\            * 默认开启 Telnet.  ' .github/workflows/main.yml
+          sed -i '/files:/i\            * 去掉解密程序的下载(内置).  ' .github/workflows/main.yml
+          sed -i '/files:/i\            > 汉化作者: Ing.  QQ交流群: 21609194 QQ频道: 0pg8m22666  ' .github/workflows/main.yml
+
+          # 修改附件名
+          sed -i 's|arpl-\$|arpl-zh_CN-\$|g' .github/workflows/main.yml
+
+          # 修改CN源
+          sed -i 's|global.download.synology.com|cndl.synology.cn|g' rss.xml rss.json
+
+          # 修改 README 为中文
+          # if [ -f README-Zh.md ]; then
+          #   if [ -f README.md ]; then
+          #     mv README.md README-En.md
+          #     sed -i 's/README-Zh.md/README.md/g' README-En.md
+          #   fi
+          #   [ -z `cat README-Zh.md | grep "README.md"` ] && sed -i '0,/# / a [English](./README.md)' README-Zh.md # typo
+          #   mv README-Zh.md README.md
+          #   sed -i 's/README.md/README-En.md/g' README.md
+          # fi
+          
+          # 修改 README
+          if [ -f README.md ]; then
+            mv README.md README-En.md
+          fi
+          if [ -f README-Zh.md ]; then
+            [ -z `cat README-Zh.md | grep "README.md"` ] && sed -i '0,/# / a [English](./README.md)' README-Zh.md # typo
+            sed -i 's/README.md/README-En.md/g' README-Zh.md
+          fi
+          if [ ! -f README.md ]; then
+            curl -k https://raw.githubusercontent.com/wjz304/arpl-zh_CN-action/main/README.md -o README.md
+          fi
+
+          
+
+          # 自定义操作 提交
+          git add .
+          git commit -m "zh_CN"
+          
+          #强制推送
+          git push --force
+
+          # 打tag
+          if [ "${{ env.newTag }}" != "" ]; then
+            echo add tag "${{ env.newTag }}"
+            git pull   # git pull origin main:refs/remotes/origin/main
+            git tag -d "${{ env.newTag }}" 
+            git tag "${{ env.newTag }}" 
+            git push --force origin "${{ env.newTag }}"
+          fi
