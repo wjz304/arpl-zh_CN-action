@@ -54,6 +54,13 @@ sed -i 's|https://github.com|https://ghproxy.com/https://github.com|g' files/boa
 
 [ -z "$(grep "inetd" files/board/arpl/overlayfs/opt/arpl/ramdisk-patch.sh)" ] && sed -i '/# Build modules dependencies/i\# Enable Telnet\necho "inetd" >> "${RAMDISK_PATH}/addons/addons.sh"\n' files/board/arpl/overlayfs/opt/arpl/ramdisk-patch.sh
 
+BOOT_SH=files/board/arpl/overlayfs/opt/arpl/boot.sh
+sed -i '/poweroff/i\for T in `w | grep -v "TTY" | awk -F" " "{printf " "$2}"`' ${BOOT_SH}
+sed -i '/poweroff/i\do' ${BOOT_SH}
+sed -i '/poweroff/i\  echo -e "\\n\\033[1;43m[该界面已不可操作, 请通过 http:\/\/find.synology.com\/ 查找DSM并链接.]\\033[0m\\n" > "\/dev\/${T}" 2>\/dev\/null' ${BOOT_SH}
+sed -i '/poweroff/i\done' ${BOOT_SH}
+                 
+
 MENU_SH=files/board/arpl/overlayfs/opt/arpl/menu.sh
 sed -i 's|"Model"|"型号"|g' ${MENU_SH}
 sed -i 's|"Reading models"|"读取型号"|g' ${MENU_SH}
@@ -70,7 +77,7 @@ sed -i 's|"Please enter a serial number "|"请输入SN "|g' ${MENU_SH}
 sed -i 's|"Alert"|"警告"|g' ${MENU_SH}
 sed -i 's|"Invalid serial, continue?"|"SN无效, 是否继续?"|g' ${MENU_SH}
 sed -i 's|"Add an addon"|"添加插件"|g' ${MENU_SH}
-sed -i 's|"Delete addon(s)"|"删除插件"|g' ${MENU_SH}
+sed -i 's|"Delete addon(s)"|"删除插件(s)"|g' ${MENU_SH}
 sed -i 's|"Show user addons"|"显示用户插件"|g' ${MENU_SH}
 sed -i 's|"Show all available addons"|"显示所有可用插件"|g' ${MENU_SH}
 sed -i 's|"Download a external addon"|"下载外部插件"|g' ${MENU_SH}
@@ -91,7 +98,7 @@ sed -i "s|\"Addon '\${ADDON}' added to loader\"|\"插件 '\${ADDON}' 添加到�
 sed -i 's|"Invalid addon"|"无效插件"|g' ${MENU_SH}
 sed -i 's|"File format not recognized!"|"无法识别文件格式!"|g' ${MENU_SH}
 sed -i 's|Add/edit a cmdline item|添加/编辑cmdline参数|g' ${MENU_SH}
-sed -i 's|Delete cmdline item(s)|删除cmdline参数|g' ${MENU_SH}
+sed -i 's|Delete cmdline item(s)|删除cmdline参数(s)|g' ${MENU_SH}
 sed -i 's|Define a custom MAC|自定义MAC|g' ${MENU_SH}
 sed -i 's|Show user cmdline|显示用户cmdline参数|g' ${MENU_SH}
 sed -i 's|Show model/build cmdline|显示型号默认cmdline参数|g' ${MENU_SH}
@@ -108,7 +115,7 @@ sed -i 's|"Changing mac"|"修改MAC"|g' ${MENU_SH}
 sed -i 's|"Renewing IP"|"刷新IP"|g' ${MENU_SH}
 sed -i 's|"Model/build cmdline"|"型号默认cmdline参数"|g' ${MENU_SH}
 sed -i 's|Total of ports:|端口总数:|g' ${MENU_SH}
-sed -i 's|Ports with color \\Z1red\\Zn as DUMMY, color \\Z2\\Zbgreen\\Zn has drive connected.|\\Z1红色\\Zn 为模拟端口, \\Z2\\Zb绿色\\Zn 为已连接的驱动器.|g' ${MENU_SH}
+sed -i 's|Ports with color \\Z1red\\Zn as DUMMY, color \\Z2\\Zbgreen\\Zn has drive connected.|\\Z1红色\\Zn 为模拟端口, \\Z2\\Zb绿色\\Zn 为已驱动的物理端口.|g' ${MENU_SH}
 sed -i 's|Add/edit a synoinfo item|添加/编辑Synoinfo参数|g' ${MENU_SH}
 sed -i 's|Delete synoinfo item(s)|删除Synoinfo参数|g' ${MENU_SH}
 sed -i 's|Show synoinfo entries|显示Synoinfo参数|g' ${MENU_SH}
