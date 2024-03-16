@@ -105,7 +105,7 @@ jobs:
           sed -i '/files:/i\            * 修改PAT国内加速.  ' .github/workflows/main.yml
           sed -i '/files:/i\            * 默认开启 Telnet.  ' .github/workflows/main.yml
           sed -i '/files:/i\            * 去掉解密程序的下载(内置).  ' .github/workflows/main.yml
-          sed -i '/files:/i\            > 汉化作者: Ing.  QQ交流群: 21609194 QQ频道: 0pg8m22666  ' .github/workflows/main.yml
+          sed -i '/files:/i\            > 汉化作者: Ing.  QQ群: 21609194,73119176; Telegram: https://t.me/RR_Org  ' .github/workflows/main.yml
 
           # 修改附件名
           sed -i 's|arpl-\$|arpl-zh_CN-\$|g' .github/workflows/main.yml
